@@ -1,0 +1,224 @@
+
+<html>
+    <head>
+      <title>Vanilla Boilerplate</title>
+  
+        <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+        <script src="https://npmcdn.com/moralis@0.0.6/dist/moralis.js"></script>
+        <script src="//cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    </head>
+  
+    <body>
+  
+      <button id="btn-login">Moralis Login</button>
+      <button id="btn-logout">Logout</button>
+
+      <br><br>
+  
+      <script>
+        // connect to Moralis server
+        Moralis.initialize("3liIhKRjqa2ZexzOV6KHpw79ZIELByY50OYmeQJ7");
+        Moralis.serverURL = "https://qowuqrgew22u.grandmoralis.com:2053/server";
+  
+        // add from here down
+        
+
+        var config = {
+          type: Phaser.AUTO,
+          width: 800,
+          height: 600,
+          physics: {
+            default: 'arcade',
+            arcade: {
+              gravity: { y: 300 },
+              debug: false
+            }
+          },
+          scene: {
+             preload: preload,
+             create: create,
+             update: update
+          }
+        };
+
+        var game ;
+        var platform;
+        var player;
+        var score = 0;
+        var scoreText;
+
+        function launch(){
+          let user = Moralis.User.current();
+          if (!user) {
+            console.log("Please log in with Metamask!")
+          }
+          else{
+            console.log(user.get('ethAddress')+" "+"logged in");
+            game = new Phaser.Game(config)
+          }
+        }
+
+        // loading assets
+        function preload ()
+        {
+          this.load.image('background', 'assets/BG.png');
+          this.load.image('ground', 'assets/Tiles/Tile (2).png');
+          this.load.image('player', 'assets/Objects/Idle (1).png');
+          this.load.image('star', 'assets/Objects/star.png');
+          this.load.image('bomb', 'assets/Objects/Saw.png');
+        }
+
+        //initial setup
+        function create ()
+        {
+          
+          this.add.image(400, 300, 'background').setScale(0.55);
+          platforms = this.physics.add.staticGroup();
+
+          platforms.create(605, 220, 'ground').setScale(0.45).refreshBody();
+          platforms.create(660, 220, 'ground').setScale(0.45).refreshBody();
+          platforms.create(715, 220, 'ground').setScale(0.45).refreshBody();
+          platforms.create(770, 220, 'ground').setScale(0.45).refreshBody();
+          
+          platforms.create(385, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(440, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(495, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(550, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(605, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(660, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(715, 450, 'ground').setScale(0.45).refreshBody();
+          platforms.create(770, 450, 'ground').setScale(0.45).refreshBody();
+
+          platforms.create(30, 300, 'ground').setScale(0.45).refreshBody();
+          platforms.create(85, 300, 'ground').setScale(0.45).refreshBody();
+          platforms.create(140, 300, 'ground').setScale(0.45).refreshBody();
+          platforms.create(195, 300, 'ground').setScale(0.45).refreshBody();
+          platforms.create(250, 300, 'ground').setScale(0.45).refreshBody();
+          platforms.create(305, 300, 'ground').setScale(0.45).refreshBody();
+
+          player = this.physics.add.sprite(500, 200, 'player').setScale(0.15).refreshBody();
+
+          player.setBounce(0.3);
+          player.setCollideWorldBounds(true);
+
+
+          
+
+          cursors = this.input.keyboard.createCursorKeys();
+
+          stars = this.physics.add.group({
+            key: 'star',
+            repeat: 11,
+            setXY: { x: 12, y: 0, stepX: 70 }
+          });
+
+          stars.children.iterate(function (child) {
+
+              child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+
+          });
+
+          scoreText = this.add.text(20, 20, 'score: 0', {  fontSize: '32px', fill: '#ffffff' });
+
+
+          bombs = this.physics.add.group();
+
+          this.physics.add.collider(bombs, platforms);
+
+          this.physics.add.collider(player, bombs, hitBomb, null, this);
+
+          this.physics.add.collider(player, platforms);
+          this.physics.add.collider(stars, platforms);
+
+          this.physics.add.overlap(player, stars, collectStar, null, this);
+
+
+        }
+
+        // 60 times per second - 60 frames per second
+        function update ()
+        {
+          //LOGIC
+          if (cursors.left.isDown)
+          {
+            player.setVelocityX(-160);
+
+          }
+          else if (cursors.right.isDown)
+          {
+            player.setVelocityX(160);
+
+          }
+          else
+          {
+             player.setVelocityX(0);
+
+          }
+          if (cursors.up.isDown && player.body.touching.down)
+          {
+            player.setVelocityY(-330);
+          }
+
+          
+        }
+
+        function collectStar (player, star)
+        {
+          star.disableBody(true, true);
+
+          score += 10;
+          scoreText.setText('Score: ' + score);
+
+          if (stars.countActive(true) === 0)
+          {
+            stars.children.iterate(function (child) {
+
+            child.enableBody(true, child.x, 0, true, true);
+
+            });
+
+            var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+
+            var bomb = bombs.create(x, 16, 'bomb').setScale(0.15).refreshBody();;
+            bomb.setBounce(1);
+            bomb.setCollideWorldBounds(true);
+            bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+
+          }
+        }
+
+        function hitBomb (player, bomb)
+        {
+          this.physics.pause();
+
+          player.setTint(0xff0000);
+
+          gameOver = true;
+        }
+
+        async function login() {
+          let user = Moralis.User.current();
+          if (!user) {
+            user = await Moralis.Web3.authenticate();
+          }
+          console.log("logged in user:", user);
+          launch();
+        }
+  
+        async function logOut() {
+          await Moralis.User.logOut();
+          console.log("logged out");
+          location.reload();
+        }
+  
+        document.getElementById("btn-login").onclick = login;
+        document.getElementById("btn-logout").onclick = logOut;
+
+        
+      </script>
+  
+  
+    </body>
+  
+  
+  </html>
